@@ -175,9 +175,14 @@ if (isset($_GET['action']) && $_GET['action'] == 'fetch_metadata') {
 // KERNEL PHP (BACKEND) - GET RANDOM COMMENT
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'get_random_comment') {
+    // Matikan pesan error bawaan PHP agar tidak bocor dan merusak format JSON
+    error_reporting(0); 
+    ini_set('display_errors', 0);
     header('Content-Type: application/json');
     
-    $videoId = $_GET['videoId'] ?? '';
+    // Ubah penangkapan data menjadi metode POST (membaca JSON Body)
+    $input = json_decode(file_get_contents('php://input'), true);
+    $videoId = $input['videoId'] ?? '';
     
     if (empty($videoId) || empty($GLOBAL_API_KEY)) {
         echo json_encode(['error' => 'Video ID atau API Key tidak valid.']);
@@ -186,11 +191,17 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_random_comment') {
 
     $url = "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={$videoId}&maxResults=20&order=relevance&key={$GLOBAL_API_KEY}";
     
-    // PERBAIKAN: Gunakan cURL, bukan file_get_contents
     $response = fetch_url_curl($url);
     
     if ($response) {
         $data = json_decode($response, true);
+        
+        // Tangkap dengan rapi jika YouTube menolak (misal: Komentar dimatikan pemilik video)
+        if (isset($data['error'])) {
+            echo json_encode(['error' => 'Akses API ditolak: ' . $data['error']['message']]);
+            exit;
+        }
+
         if (!empty($data['items'])) {
             $commentsList = [];
             foreach($data['items'] as $item) {
@@ -213,9 +224,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_random_comment') {
             exit;
         }
     }
-    echo json_encode(['error' => 'Komentar tidak ditemukan.']);
+    echo json_encode(['error' => 'Video ini tidak memiliki komentar.']);
     exit;
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -528,7 +540,12 @@ let liveComments = [];
 
 async function getRandomDisplay(videoId) {
     try {
-        const res = await fetch(`?action=get_random_comment&videoId=${videoId}&maxResults=10`);
+        // Menggunakan POST agar aman melewati routing Vercel
+        const res = await fetch('?action=get_random_comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId: videoId })
+        });
         const data = await res.json();
         
         if (data.success && data.commentsList) {
@@ -538,6 +555,7 @@ async function getRandomDisplay(videoId) {
         console.log("Gagal mengambil 10 komentar dummy.");
     }
 }
+
 
 btnRandom.addEventListener('click', async () => {
     const url = document.getElementById('ytUrl').value;
@@ -565,8 +583,13 @@ btnRandom.addEventListener('click', async () => {
         }
     }, 100);
 
-    try {
-        const res = await fetch(`?action=get_random_comment&videoId=${globalVideoId}`);
+        try {
+        // Menggunakan POST untuk mengambil komentar asli saat animasi selesai
+        const res = await fetch('?action=get_random_comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId: globalVideoId })
+        });
         const data = await res.json();
         
         setTimeout(() => {
@@ -589,8 +612,9 @@ btnRandom.addEventListener('click', async () => {
             clearInterval(spinInterval);
             btnCloseModal.disabled = false;
             animAuthor.innerText = "Error";
-            animText.innerText = "Gangguan koneksi ke API.";
+            animText.innerText = "Sistem gagal memproses balasan (Bukan format JSON yang valid).";
         }, 5000);
+    
     }
 }); 
 
