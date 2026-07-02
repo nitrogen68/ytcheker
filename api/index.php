@@ -50,28 +50,65 @@ if (isset($_GET['action']) && $_GET['action'] == 'fetch_metadata') {
     $comments = null;
     $description = 'Tidak ada deskripsi.';
 
+
+    
     // ==========================================================
-    // 1. AMBIL STATISTIK VIA YOUTUBE DATA API V3
+    // 1. AMBIL STATISTIK & METADATA VIA YOUTUBE DATA API V3 (Full)
     // ==========================================================
     $apiSuccess = false;
 
+    // Daftar Kategori YouTube API (Mapping dari ID ke Teks)
+    $youtubeCategories = [
+        "1" => "Film & Animation", "2" => "Autos & Vehicles", "10" => "Music",
+        "15" => "Pets & Animals", "17" => "Sports", "18" => "Short Movies",
+        "19" => "Travel & Events", "20" => "Gaming", "21" => "Videoblogging",
+        "22" => "People & Blogs", "23" => "Comedy", "24" => "Entertainment",
+        "25" => "News & Politics", "26" => "How-to & Style", "27" => "Education",
+        "28" => "Science & Technology", "29" => "Nonprofits & Activism"
+    ];
+
     if (!empty($videoId) && !empty($GLOBAL_API_KEY)) {
-        $apiUrl = "https://www.googleapis.com/youtube/v3/videos?part=statistics&id={$videoId}&key={$GLOBAL_API_KEY}";
+        // PERBAIKAN: Menambahkan 'snippet' pada parameter 'part' untuk mengambil Judul, Deskripsi, dll.
+        $apiUrl = "https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id={$videoId}&key={$GLOBAL_API_KEY}";
         
-        // Menggunakan cURL (Helper) bukan file_get_contents
         $apiResponse = fetch_url_curl($apiUrl);
         if ($apiResponse) {
             $apiData = json_decode($apiResponse, true);
             if (!empty($apiData['items'])) {
-                $stats = $apiData['items'][0]['statistics'];
+                $item = $apiData['items'][0];
+                
+                // Ambil Data Statistik
+                $stats = $item['statistics'];
                 $views    = $stats['viewCount'] ?? null;
                 $likes    = $stats['likeCount'] ?? null;
                 $comments = $stats['commentCount'] ?? null;
+                
+                // Ambil Data Metadata (Snippet)
+                $snippet = $item['snippet'];
+                $title = $snippet['title'] ?? 'Tidak diketahui';
+                $description = $snippet['description'] ?? 'Tidak ada deskripsi.';
+                
+                // Format Waktu Upload (ISO 8601)
+                $uploadDate = $snippet['publishedAt'] ?? null;
+                $datePublished = $uploadDate; 
+
+                // Konversi Kategori ID menjadi Teks
+                $categoryId = $snippet['categoryId'] ?? '';
+                $genre = $youtubeCategories[$categoryId] ?? 'Tidak diketahui';
+
+                // Gunakan Resolusi Thumbnail Maksimal jika tersedia
+                if (isset($snippet['thumbnails']['maxres']['url'])) {
+                    $thumbnail = $snippet['thumbnails']['maxres']['url'];
+                } elseif (isset($snippet['thumbnails']['high']['url'])) {
+                    $thumbnail = $snippet['thumbnails']['high']['url'];
+                }
                 
                 $apiSuccess = true;
             }
         }
     }
+
+    
 
     // ==========================================================
     // 2. AMBIL METADATA LAINNYA VIA SCRAPING (Googlebot Spoofing)
