@@ -1,8 +1,10 @@
 {
-  "builds": [
-    { "src": "index.php", "use": "@vercel/php" }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "index.php" }
+  "functions": {
+    "index.php": {
+      "runtime": "vercel-php@0.7.1"
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.php" }
   ]
 }
