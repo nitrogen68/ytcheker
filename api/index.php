@@ -1,1 +1,0 @@
-[Improved version with download video link, playlist support, and smoother dark mode]
