@@ -504,6 +504,27 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_random_comment') {
         .result-item.stat-box { align-items: center; text-align: center; padding: 12px; }
 
         .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 6px; }
+
+        /* BARU: baris label sejajar dengan tombol copy kecil (mis. Deskripsi Video) */
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .label-row .label { margin-bottom: 0; }
+        .mini-copy-btn {
+            font-size: 10px;
+            padding: 4px 9px;
+            background: var(--btn-paste-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .mini-copy-btn:hover { background: var(--btn-paste-hover); }
+        .mini-copy-btn.success { background: #10b981; color: #fff; border-color: #10b981; }
         .value { font-size: 15px; font-weight: 500; color: var(--text-main); word-break: break-word; line-height: 1.5; }
         .value.highlight { color: var(--accent); font-weight: 600; font-size: 16px;}
 
@@ -728,7 +749,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_random_comment') {
                 <span class="value" id="resGenre">-</span>
             </div>
             <div class="result-item">
-                <span class="label" id="lblDesc">Deskripsi Video</span>
+                <div class="label-row">
+                    <span class="label" id="lblDesc">Deskripsi Video</span>
+                    <button id="copyDescBtn" class="mini-copy-btn" type="button">📋 <span id="lblCopyDesc">Salin</span></button>
+                </div>
                 <div class="desc-box" id="resDesc">-</div>
             </div>
             <div class="result-item">
@@ -997,14 +1021,14 @@ const textDict = {
         desc: 'Deskripsi Video', views: '👁️ Views', likes: '👍 Likes', comments: '💬 Comments',
         raw: 'Upload Date (Raw Source)', local: 'Waktu Upload (Lokal Anda)',
         copy: 'Salin Semua Detail', unknown: 'Tidak diketahui', subsHidden: 'Disembunyikan',
-        subscribers: 'subscriber', videos: 'video'
+        subscribers: 'subscriber', videos: 'video', copyDesc: 'Salin', copiedDesc: 'Tersalin!'
     },
     'en-US': {
         format: 'Language Format:', title: 'Video Title', genre: 'Genre / Category',
         desc: 'Video Description', views: '👁️ Views', likes: '👍 Likes', comments: '💬 Comments',
         raw: 'Upload Date (Raw Source)', local: 'Upload Time (Your Local Time)',
         copy: 'Copy All Details', unknown: 'Unknown', subsHidden: 'Hidden',
-        subscribers: 'subscribers', videos: 'videos'
+        subscribers: 'subscribers', videos: 'videos', copyDesc: 'Copy', copiedDesc: 'Copied!'
     }
 };
 
@@ -1030,6 +1054,7 @@ function applyLanguage(lang) {
     document.getElementById('lblRaw').innerText = textDict[lang].raw;
     document.getElementById('lblLocal').innerText = textDict[lang].local;
     document.getElementById('lblCopy').innerText = textDict[lang].copy;
+    document.getElementById('lblCopyDesc').innerText = textDict[lang].copyDesc;
 }
 
 function renderDate(isoDate) {
@@ -1222,6 +1247,26 @@ ${desc}`;
             alert('Copy failed / Clipboard API blocked.');
         });
     }
+});
+
+// BARU: Tombol copy khusus untuk Deskripsi Video saja
+const copyDescBtn = document.getElementById('copyDescBtn');
+copyDescBtn.addEventListener('click', () => {
+    const desc = document.getElementById('resDesc').innerText;
+    if (!desc || desc === '-') return;
+
+    navigator.clipboard.writeText(desc).then(() => {
+        const d = textDict[currentLang];
+        const original = copyDescBtn.innerHTML;
+        copyDescBtn.innerHTML = `✅ <span>${d.copiedDesc}</span>`;
+        copyDescBtn.classList.add('success');
+        setTimeout(() => {
+            copyDescBtn.innerHTML = original;
+            copyDescBtn.classList.remove('success');
+        }, 1500);
+    }).catch(() => {
+        alert('Copy failed / Clipboard API blocked.');
+    });
 });
 </script>
 </body>
